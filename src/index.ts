@@ -358,7 +358,12 @@ function onConnect(conn: DbConnection, identity: Identity, token: string) {
     .subscribeToAllTables();
 
   conn.db.auction.onInsert((_ctx: EventContext, a) => {
-    if (a.status.tag === "Open") tryBid(conn, a.id, a.matchId, a.letter);
+    if (a.status.tag !== "Open") return;
+    tryBid(conn, a.id, a.matchId, a.letter);
+    // Re-check words every auction, not just when our rack changes: the bag
+    // shrinking alone can make the endgame rule play a held rack. Without
+    // this the bot often ended matches holding 6-11 tiles.
+    if (myMatchIds.has(String(a.matchId))) tryPlayWord(conn);
   });
   conn.db.matchParticipant.onInsert((_ctx, p) => {
     if (p.botId !== myBotId) return;
