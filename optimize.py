@@ -108,7 +108,7 @@ def main():
     json.dump(state, open(STATE, "w"))
 
     improved = [t for t in tries if t[1]["verdict"] == "IMPROVED"]
-    best = max(improved, key=lambda t: (t[1]["winrate_delta"], t[1]["margin_delta"]), default=None)
+    best = max(improved, key=lambda t: (t[1].get("placement_gain", 0), t[1]["score_delta"]), default=None)
     for value, result in tries:
         kept = best is not None and value == best[0]
         print(f"[optimize] {name}={value}: {result['verdict']} (winrate {100 * result['winrate_delta']:+.1f} pts, "

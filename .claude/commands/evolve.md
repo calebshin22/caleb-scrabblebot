@@ -25,7 +25,7 @@ asking questions, and make exactly ONE change.
 3. If you changed code, run `npm run typecheck && npm test`. Fix failures or
    revert the change.
 
-4. Judge it, and only this way: `python3 eval.py` (200 paired games vs HEAD).
+4. Judge it, and only this way: `python3 eval.py` (200 paired games vs HEAD, two opponent models; placement first, since rating comes from finishing place).
    Read the VERDICT line.
 
 5. Append one row to `experiments.md`:

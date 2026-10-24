@@ -14,11 +14,13 @@ IMPROVED only if it improves against both, WORSE if it's worse against either. T
 code changes are judged as well as strategy.json changes. Baseline runs
 are cached in data/eval_cache/.
 
-Verdict (also in data/eval_last.json), average score first (the
-leaderboard's "Avg score" = total_score / matches), winrate second:
-  IMPROVED  avg score up >= 1% and significant (paired t > 2)
-  WORSE     avg score significantly down (paired t < -2)
-  NEUTRAL   anything else; winrate alone never keeps a change
+Verdict (also in data/eval_last.json). Rank is by OpenSkill rating, which
+the server updates from finishing place only, so avg placement comes first,
+then avg score (the leaderboard's total_score / matches), then winrate:
+  IMPROVED  placement significantly better (paired t > 2); or placement flat
+            and avg score up >= 1% and significant
+  WORSE     placement significantly worse; or flat and avg score significantly down
+  NEUTRAL   anything else
   NEUTRAL   anything else
 """
 
@@ -154,11 +156,16 @@ def compare(cand, base, args, sha):
     sds = math.sqrt(sum((x - ds) ** 2 for x in d_score) / max(1, n - 1))
     ts = ds / (sds / math.sqrt(n)) if sds > 0 else 0.0
 
-    # Keep only a significant (t > 2) avg-score gain of at least 1%. Winrate
-    # never rescues a change that doesn't raise avg score.
-    if ts > 2 and ds >= 0.01 * bs["avgScore"]:
+    # Rating (OpenSkill) is updated from finishing place only, so placement
+    # comes first: keep a change that significantly improves avg placement,
+    # or leaves placement flat and significantly raises avg score.
+    d_place = [b["placement"] - c["placement"] for c, b in zip(cand["games"], base["games"])]  # + = better
+    dp = sum(d_place) / n
+    sdp = math.sqrt(sum((x - dp) ** 2 for x in d_place) / max(1, n - 1))
+    tp = dp / (sdp / math.sqrt(n)) if sdp > 0 else 0.0
+    if tp > 2 or (abs(tp) <= 2 and ts > 2 and ds >= 0.01 * bs["avgScore"]):
         verdict = "IMPROVED"
-    elif ts < -2:
+    elif tp < -2 or (abs(tp) <= 2 and ts < -2):
         verdict = "WORSE"
     else:
         verdict = "NEUTRAL"
@@ -167,13 +174,14 @@ def compare(cand, base, args, sha):
     print(summarize("candidate", cs))
     print(summarize("baseline", bs))
     print(f"winrate {100 * dw:+.1f} pts; games only the candidate won {cand_only}, only the baseline {base_only}")
+    print(f"AVG PLACEMENT {cs['avgPlacement']:.2f} vs {bs['avgPlacement']:.2f}: {dp:+.3f} places better per game (paired t = {tp:.2f})")
     print(f"AVG SCORE {cs['avgScore']:.1f} vs {bs['avgScore']:.1f}: {ds:+.2f} per game (paired t = {ts:.2f})")
     print(f"margin vs best opponent {mean:+.2f} per game (paired t = {t:.2f})")
     print(f"field avg score {cs['fieldAvgScore']:.1f}, field winner {cs['fieldWinnerScore']:.1f}")
     print(f"field verdict: {verdict}")
     return {"verdict": verdict, "games": n, "seed": args.seed, "baseline": args.baseline,
             "baseline_sha": sha, "candidate": cs, "baseline_summary": bs,
-            "winrate_delta": dw, "score_delta": ds, "score_t": ts, "margin_delta": mean, "paired_t": t,
+            "winrate_delta": dw, "placement_gain": dp, "placement_t": tp, "score_delta": ds, "score_t": ts, "margin_delta": mean, "paired_t": t,
             "candidate_only_wins": cand_only, "baseline_only_wins": base_only}
 
 
