@@ -337,6 +337,13 @@ def main():
         where = f"#{rank} of {ranked}" if rank else f"provisional (±{spread} > 175, unranked)"
         out.append(f"- Rank: **{where}**, rating {rating} ±{spread}")
         out.append(f"- Server stats: {wins} wins / {mp} rated matches")
+    # The site's "Avg score" column: total_score / matches_played (points, not %).
+    rows = db.execute("SELECT b.name, s.total_score * 1.0 / s.matches_played FROM bot_stats s JOIN bots b ON b.id = s.bot_id "
+                      "WHERE s.matches_played >= 20 ORDER BY 2 DESC LIMIT 1").fetchone()
+    mine = db.execute("SELECT total_score * 1.0 / matches_played FROM bot_stats WHERE bot_id = ? AND matches_played > 0", (us,)).fetchone()
+    if rows:
+        out.append(f"- **Avg score (leaderboard metric): {mine[0] if mine else 0:.1f}** vs leader {rows[0]} {rows[1]:.1f} "
+                   f"(gap {rows[1] - (mine[0] if mine else 0):.1f})")
     else:
         out.append("- Not on the leaderboard yet.")
     out.append("")

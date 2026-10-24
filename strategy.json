@@ -13,7 +13,7 @@
   "first_price_floor": 0.6,
   "endgame_bag_size": 10,
   "endgame_spend_fraction": 0,
-  "open_board_when_behind": false,
+  "open_board_when_behind": true,
   "behind_aggression": 1.15,
   "behind_min_word_length": 5,
   "close_board_when_ahead": false,

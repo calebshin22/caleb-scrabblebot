@@ -31,7 +31,8 @@ import { chooseWord, decideBid } from "./strategy.js";
 import { Intel } from "./intel.js";
 import { loadDictionary } from "./dictionary.js";
 import { enableLogging, flush, logger, rackString } from "./logger.js";
-import { loadParams, PARAMS } from "./params.js";
+import { applyCounter, loadParams, PARAMS } from "./params.js";
+import { loadOpponents, pickCounter } from "./counters.js";
 import { initSimulator } from "./simulator.js";
 
 const HOST = process.env.STDB_HOST ?? "https://maincloud.spacetimedb.com";
@@ -106,6 +107,18 @@ function inMyRunningMatch(conn: DbConnection, matchId: bigint): boolean {
   );
 }
 
+// Our score minus the best opponent's, for the behind/ahead modes.
+function scoreDiff(conn: DbConnection, matchId: bigint): number {
+  let mine = 0;
+  let best = -Infinity;
+  for (const p of conn.db.matchParticipant.iter()) {
+    if (p.matchId !== matchId) continue;
+    if (p.botId === myBotId) mine = Number(p.score);
+    else best = Math.max(best, Number(p.score));
+  }
+  return best === -Infinity ? 0 : mine - best;
+}
+
 // Intel for a match this bot is in, built on first use from what's already
 // in the cache. Callers feed it new rows only if it already existed, since a
 // fresh one has replayed them.
@@ -155,6 +168,20 @@ function onMatchStart(conn: DbConnection, matchId: bigint) {
   loadParams();
   const intel = intelFor(conn, matchId);
   if (!intel) return;
+
+  // Pick a counter-strategy for these opponents (profiles from analyze.py).
+  if (PARAMS.counters_enabled) {
+    const profiles = loadOpponents();
+    const opponents = Array.from(conn.db.matchParticipant.iter())
+      .filter((p) => p.matchId === matchId && p.botId !== myBotId)
+      .map((p) => String(p.botId));
+    const { counter, because } = pickCounter(opponents.map((id) => profiles[id]));
+    const overrides = applyCounter(counter);
+    console.log(
+      `[${BOT_NAME}] match ${matchId}: counter '${counter}'${because.length ? ` for ${because.join(", ")}` : ""}`,
+    );
+    logger.logCounter(matchId, { counter, because, opponents, overrides });
+  }
   logger.logMatchStart(matchId, {
     myBotId,
     auctionType: m.auctionType.tag,
@@ -222,6 +249,7 @@ function tryBid(
     matchId,
     auctionId,
     bagRemaining: conn.db.matchState.id.find(matchId)?.bagTotal,
+    scoreDiff: scoreDiff(conn, matchId),
   });
   if (amount <= 0) return;
   conn.reducers
@@ -253,6 +281,7 @@ function tryPlayWord(conn: DbConnection) {
       dictionary: DICTIONARY,
       matchId,
       bagRemaining: conn.db.matchState.id.find(matchId)?.bagTotal,
+      scoreDiff: scoreDiff(conn, matchId),
     });
     if (!word) continue;
     console.log(`[${BOT_NAME}] match ${matchId}: playing '${word}'`);

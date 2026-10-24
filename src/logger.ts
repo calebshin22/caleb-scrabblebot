@@ -143,6 +143,12 @@ export const logger = {
   ) {
     emit("match_end", matchId, f);
   },
+  logCounter(
+    matchId: bigint,
+    f: { counter: string; because: string[]; opponents: string[]; overrides: object },
+  ) {
+    emit("counter_strategy", matchId, f);
+  },
   logIntelSnapshot(matchId: bigint, f: object) {
     emit("match_end_snapshot", matchId, f);
   },

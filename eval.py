@@ -12,9 +12,10 @@ game by game. The baseline runs from a git worktree of its own commit, so
 code changes are judged as well as strategy.json changes. Baseline runs
 are cached in data/eval_cache/.
 
-Verdict (also in data/eval_last.json):
-  IMPROVED  winrate up; or winrate equal and score margin significantly up
-  WORSE     winrate down by more than 5 percentage points
+Verdict (also in data/eval_last.json), average score first (the
+leaderboard's "Avg score" = total_score / matches), winrate second:
+  IMPROVED  avg score significantly up (paired t > 2), or flat and winrate up
+  WORSE     avg score significantly down, or winrate down > 5 points
   NEUTRAL   anything else
 """
 
@@ -88,12 +89,15 @@ def main():
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--samples", type=int, default=100, help="Monte Carlo samples per bid")
     ap.add_argument("--field", default="real", choices=["real", "sim"])
+    ap.add_argument("--out", default="", help="result JSON (default data/eval_last.json)")
     args = ap.parse_args()
     if args.games < MIN_GAMES:
         sys.exit(f"--games must be at least {MIN_GAMES}")
     os.makedirs(CACHE, exist_ok=True)
 
-    cand = arena(ROOT, os.path.join(ROOT, args.candidate), args, os.path.join(CACHE, "candidate.json"))
+    cand_out = os.path.join(CACHE, f"candidate-{os.getpid()}.json")
+    cand = arena(ROOT, os.path.abspath(args.candidate), args, cand_out)
+    os.remove(cand_out)
 
     sha = run(["git", "rev-parse", args.baseline])
     key = f"{sha[:12]}-{args.games}-{args.seed}-{args.samples}-{args.field}-{data_hash()}"
@@ -116,10 +120,16 @@ def main():
     cand_only = sum(1 for c, b in zip(cand["games"], base["games"]) if c["won"] and not b["won"])
     base_only = sum(1 for c, b in zip(cand["games"], base["games"]) if b["won"] and not c["won"])
     dw = cs["winrate"] - bs["winrate"]
+    # The leaderboard's headline is average score (total_score / matches);
+    # rank by it first, winrate second.
+    d_score = [c["myScore"] - b["myScore"] for c, b in zip(cand["games"], base["games"])]
+    ds = sum(d_score) / n
+    sds = math.sqrt(sum((x - ds) ** 2 for x in d_score) / max(1, n - 1))
+    ts = ds / (sds / math.sqrt(n)) if sds > 0 else 0.0
 
-    if dw > 0 or (dw == 0 and t > 2):
+    if ts > 2 or (abs(ts) <= 2 and dw > 0):
         verdict = "IMPROVED"
-    elif dw < -WORSE_DROP:
+    elif ts < -2 or dw < -WORSE_DROP:
         verdict = "WORSE"
     else:
         verdict = "NEUTRAL"
@@ -128,15 +138,16 @@ def main():
     print(summarize("candidate", cs))
     print(summarize("baseline", bs))
     print(f"winrate {100 * dw:+.1f} pts; games only the candidate won {cand_only}, only the baseline {base_only}")
+    print(f"AVG SCORE {cs['avgScore']:.1f} vs {bs['avgScore']:.1f}: {ds:+.2f} per game (paired t = {ts:.2f})")
     print(f"margin vs best opponent {mean:+.2f} per game (paired t = {t:.2f})")
     print(f"field avg score {cs['fieldAvgScore']:.1f}, field winner {cs['fieldWinnerScore']:.1f}")
     print(f"VERDICT: {verdict}")
 
     result = {"verdict": verdict, "games": n, "seed": args.seed, "baseline": args.baseline,
               "baseline_sha": sha, "candidate": cs, "baseline_summary": bs,
-              "winrate_delta": dw, "margin_delta": mean, "paired_t": t,
+              "winrate_delta": dw, "score_delta": ds, "score_t": ts, "margin_delta": mean, "paired_t": t,
               "candidate_only_wins": cand_only, "baseline_only_wins": base_only}
-    with open(os.path.join(DATA, "eval_last.json"), "w") as f:
+    with open(args.out or os.path.join(DATA, "eval_last.json"), "w") as f:
         json.dump(result, f, indent=2)
 
 
