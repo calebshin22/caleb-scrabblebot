@@ -60,11 +60,11 @@
     "bid_1.0": {
       "bid_aggression": 1.0
     },
-    "len_6": {
-      "play_min_length": 6
-    },
     "market_1.0": {
       "market_floor": 1.0
+    },
+    "no_counters": {
+      "counters_enabled": false
     }
   },
   "market_floor": 0.8
