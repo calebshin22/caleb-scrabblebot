@@ -74,6 +74,7 @@ export type Counters = Record<string, Partial<Params>>;
 // Mutated in place so every importer sees reloads.
 export const PARAMS: Params = { ...DEFAULT_PARAMS };
 export const COUNTERS: Counters = {};
+export const ARMS: Counters = {};
 
 // What tuners may change, and within what range.
 export const TUNABLE: Partial<
@@ -120,7 +121,7 @@ function coerce(raw: Record<string, unknown>, base: Params): Params {
 }
 
 // Parse a strategy file without touching PARAMS (the arena seats several).
-export function readStrategy(file = PARAMS_PATH): { params: Params; counters: Counters } {
+export function readStrategy(file = PARAMS_PATH): { params: Params; counters: Counters; arms: Counters } {
   let raw: Record<string, unknown> = {};
   try {
     raw = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -129,8 +130,12 @@ export function readStrategy(file = PARAMS_PATH): { params: Params; counters: Co
       console.warn(`params: couldn't read ${file}, using defaults: ${err}`);
     }
   }
+  return { params: coerce(raw, DEFAULT_PARAMS), counters: overridesMap(raw.counters), arms: overridesMap(raw.bandit_arms) };
+}
+
+// A map of name -> partial params, as used by "counters" and "bandit_arms".
+function overridesMap(rc: unknown): Counters {
   const counters: Counters = {};
-  const rc = raw.counters;
   if (rc && typeof rc === "object") {
     for (const [name, overrides] of Object.entries(rc as Record<string, unknown>)) {
       if (!overrides || typeof overrides !== "object") continue;
@@ -140,15 +145,17 @@ export function readStrategy(file = PARAMS_PATH): { params: Params; counters: Co
       ) as Partial<Params>;
     }
   }
-  return { params: coerce(raw, DEFAULT_PARAMS), counters };
+  return counters;
 }
 
 // Reload PARAMS and COUNTERS from disk.
 export function loadParams(file = PARAMS_PATH): Params {
-  const { params, counters } = readStrategy(file);
+  const { params, counters, arms } = readStrategy(file);
   Object.assign(PARAMS, params);
   for (const k of Object.keys(COUNTERS)) delete COUNTERS[k];
   Object.assign(COUNTERS, counters);
+  for (const k of Object.keys(ARMS)) delete ARMS[k];
+  Object.assign(ARMS, arms);
   return PARAMS;
 }
 
@@ -160,5 +167,5 @@ export function applyCounter(name: string): Partial<Params> {
 }
 
 export function saveParams(params: Params, file = PARAMS_PATH, counters: Counters = COUNTERS) {
-  fs.writeFileSync(file, JSON.stringify({ ...params, counters }, null, 2) + "\n");
+  fs.writeFileSync(file, JSON.stringify({ ...params, counters, bandit_arms: ARMS }, null, 2) + "\n");
 }

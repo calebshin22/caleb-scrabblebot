@@ -31,7 +31,8 @@ import { chooseWord, decideBid } from "./strategy.js";
 import { Intel } from "./intel.js";
 import { loadDictionary } from "./dictionary.js";
 import { enableLogging, flush, logger, rackString } from "./logger.js";
-import { applyCounter, loadParams, PARAMS } from "./params.js";
+import { applyCounter, ARMS, loadParams, PARAMS } from "./params.js";
+import { pickArm, recordResult } from "./bandit.js";
 import { loadOpponents, pickCounter } from "./counters.js";
 import { initSimulator } from "./simulator.js";
 
@@ -64,6 +65,7 @@ const lastWordAttemptByMatch = new Map<string, number>();
 const WORD_RETRY_MS = 500;
 const intelByMatch = new Map<string, Intel>();
 const startedMatches = new Set<string>();
+const armByMatch = new Map<string, string>();
 // Matches this bot is or was in, so handlers can skip the rest of the
 // database's history (hundreds of thousands of rows on connect) in O(1).
 const myMatchIds = new Set<string>();
@@ -169,6 +171,14 @@ function onMatchStart(conn: DbConnection, matchId: bigint) {
   const intel = intelFor(conn, matchId);
   if (!intel) return;
 
+  // Pick a strategy variant, learning from past finishes (data/bandit.json).
+  const arm = pickArm(Object.keys(ARMS));
+  if (arm) {
+    Object.assign(PARAMS, ARMS[arm]);
+    armByMatch.set(key, arm);
+    console.log(`[${BOT_NAME}] match ${matchId}: strategy variant '${arm}'`);
+  }
+
   // Pick a counter-strategy for these opponents (profiles from analyze.py).
   if (PARAMS.counters_enabled) {
     const profiles = loadOpponents();
@@ -188,6 +198,7 @@ function onMatchStart(conn: DbConnection, matchId: bigint) {
     startingRack: rackString(intel.myStartingRack),
     bagTotal: m.bagTotal,
     resumed: m.currentRound > 1,
+    arm: arm ?? null,
     params: { ...PARAMS },
   });
 }
@@ -205,6 +216,11 @@ function onMatchEnd(conn: DbConnection, matchId: bigint) {
     placement: me ? 1 + scores.filter((p) => p.score > me.score).length : null,
     players: scores.length,
   });
+  const arm = armByMatch.get(String(matchId));
+  if (arm && me) {
+    recordResult(arm, 1 + scores.filter((p) => p.score > me.score).length, scores.length);
+    armByMatch.delete(String(matchId));
+  }
   const intel = intelByMatch.get(String(matchId));
   if (intel) logger.logIntelSnapshot(matchId, intel.snapshot());
   void flush();

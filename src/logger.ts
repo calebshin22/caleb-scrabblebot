@@ -72,6 +72,7 @@ export const logger = {
       startingRack: string;
       bagTotal: number;
       resumed: boolean; // joined mid-match, e.g. after a restart
+      arm: string | null; // strategy variant picked by the bandit
       params: object;
     },
   ) {
