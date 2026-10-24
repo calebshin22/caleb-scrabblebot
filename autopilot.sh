@@ -44,7 +44,7 @@ while true; do
   log "evolve";  python3 evolve_live.py || log "evolve failed"
   # Every 4th cycle (~2 h): re-tune against real opponents' bids in our
   # recent matches, and refresh the replay_best live variant.
-  if [ $((cycle % 4)) -eq 1 ]; then
+  if [ $((cycle % 4)) -eq 0 ]; then
     log "replay search"; python3 replay_spawn.py || log "replay search failed"
   fi
   python3 live_eval.py | tail -6 | sed 's/^/    /'
