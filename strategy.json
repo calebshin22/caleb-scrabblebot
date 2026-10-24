@@ -64,11 +64,13 @@
       "endgame_spend_fraction": 0.6,
       "endgame_bag_size": 25
     },
-    "market_1.2": {
-      "market_floor": 1.2
-    },
     "denial_1.09": {
       "denial_fraction": 1.089
+    },
+    "replay_best": {
+      "bid_aggression": 1.65,
+      "denial_fraction": 1.198,
+      "market_floor": 0.72
     }
   },
   "market_floor": 0.8
