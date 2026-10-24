@@ -38,6 +38,7 @@ while true; do
   log "scrape";  nice -n 10 python3 scrape.py --once || log "scrape failed"
   log "analyze"; nice -n 10 python3 analyze.py > /dev/null || log "analyze failed"
   sed -n '/## Leaderboard/,/## Results/p' data/report.md | grep -E '^- ' | sed 's/^/    /'
+  log "price model"; nice -n 10 python3 price_model.py || log "price model failed"
   log "evolve";  python3 evolve_live.py || log "evolve failed"
   python3 live_eval.py | tail -6 | sed 's/^/    /'
   # Keep GitHub in sync; main tracks the working branch.

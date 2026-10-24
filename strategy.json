@@ -65,6 +65,9 @@
     },
     "no_counters": {
       "counters_enabled": false
+    },
+    "regression": {
+      "regression_anchor": 0.9
     }
   },
   "market_floor": 0.8

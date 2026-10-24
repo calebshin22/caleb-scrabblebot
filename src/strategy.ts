@@ -6,6 +6,7 @@ import { LETTER_VALUE } from "./letters.js";
 import { logger, rackString } from "./logger.js";
 import { marketPrice } from "./market.js";
 import { PARAMS } from "./params.js";
+import { predictedTopBid } from "./priceModel.js";
 import { rand } from "./random.js";
 import {
   builtFrom,
@@ -156,6 +157,17 @@ export function decideBid(ctx: BidContext): number {
     if (price) {
       const anchor = price.avgTop * P.top_anchor * Math.min(1, value / P.useful_value);
       if (anchor > want) adjustments.push("top_anchor");
+      want = Math.max(want, anchor);
+    }
+  }
+
+  // Regression anchor: the model's predicted winning bid for this letter at
+  // this stage of the match, scaled by how much the letter helps us.
+  if (P.regression_anchor > 0 && value > 0) {
+    const predicted = predictedTopBid(ctx.letter, ctx.bagRemaining);
+    if (predicted !== null) {
+      const anchor = predicted * P.regression_anchor * Math.min(1, value / P.useful_value);
+      if (anchor > want) adjustments.push("regression");
       want = Math.max(want, anchor);
     }
   }

@@ -29,6 +29,8 @@ export const DEFAULT_PARAMS = {
   top_anchor: 0,                  // like the top bots: bid up to this x the market's
                                   // typical winning bid, scaled by usefulness...
   useful_value: 6,                // ...full anchor once a letter adds this many points
+  regression_anchor: 0,           // bid up to this x the regression's predicted
+                                  // winning bid (price_model.py), scaled by usefulness
 
   // Score-dependent play ("open/close the board" in auction terms)
   open_board_when_behind: false,  // behind: bid harder, hold for long words
@@ -102,6 +104,7 @@ export const TUNABLE: Partial<
   market_floor: { kind: "float", min: 0, max: 2 },
   top_anchor: { kind: "float", min: 0, max: 2 },
   useful_value: { kind: "float", min: 1, max: 30 },
+  regression_anchor: { kind: "float", min: 0, max: 2 },
   behind_aggression: { kind: "float", min: 0.5, max: 3 },
   behind_min_word_length: { kind: "int", min: 2, max: 8 },
   ahead_defense_mult: { kind: "float", min: 0, max: 5 },
