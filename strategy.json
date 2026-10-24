@@ -30,7 +30,7 @@
   "leave_weight": 0,
   "bingo_bonus": 0,
   "random_top_k": 1,
-  "play_min_length": 2,
+  "play_min_length": 7,
   "play_min_score": 0,
   "hold_rack_size": 0,
   "tempo_hold_enabled": false,
