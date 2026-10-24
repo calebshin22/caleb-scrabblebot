@@ -13,3 +13,5 @@ scores ~15% below the real one (see DISCOVERY.md).
 | 5 | 2026-10-24 | tuning: Ahead, play at once and defend | `close_board_when_ahead` false -> true | winrate 25.5% vs 33.0%, score 64.7 vs 69.3 | WORSE | reverted |
 | 6 | 2026-10-24 | tuning: Random top-2 words make us harder to model | `random_top_k` 1 -> 2 | winrate 31.0% vs 33.0%, score 65.4 vs 69.3 (arena opponents don't model us, so only the cost shows) | NEUTRAL | reverted |
 | 7 | 2026-10-24 | tuning: Bid to deny letters that complete an opponent's best word | `defense_weight` 0 -> 0.3 | winrate 34.5% vs 33.0%, score 70.8 vs 69.3 | IMPROVED | next loop (one change at a time) |
+| 8 | 2026-10-24 | tuning: Defense_weight under the new score-first rule | `defense_weight` 0 -> 0.3 | avg score 71.5 vs 70.4, +1.1/game (t=1.3), 200 games | NEUTRAL | reverted |
+| 9 | 2026-10-24 | tuning: #1 (LetterShark) wins ~4 more tiles/match; we end with ~54 unspent money, which is worthless | `bid_aggression` 1 -> 1.5 | avg score 81.5 vs 70.4, +11.1/game (t=7.8), 200 games | IMPROVED | kept |

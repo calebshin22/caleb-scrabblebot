@@ -77,3 +77,38 @@ ScrabbleBot is a **letter-auction game**, not board Scrabble.
 | challenge_threshold | N/A (the server validates words; no challenges) |
 | random top-K | random choice among the top-K words, plus bid jitter |
 | eval vs opponents | `scripts/arena.ts`: local matches under the server's rules against opponents calibrated to the scraped market |
+
+## The leaderboard's "average score" (exact formula)
+
+From the site bundle's leaderboard row renderer:
+
+    Win %     = (wins / matchesPlayed * 100).toFixed(0) + "%"
+    Avg score = (Number(totalScore) / matchesPlayed).toFixed(1)    // points, no %
+
+`totalScore` is the sum of the bot's final match scores (word rewards) in
+`bot_stats`. There is no score percentage on the site: "94.2%" is an avg
+score of 94.2 points per match. Top avg scores right now (bots with 50+ matches):
+LetterShark 110.1, postturing 94.0, Nijello 93.9, Chinese Dante 93.1.
+Rank order itself is by OpenSkill rating (see above), which is driven by
+finishing score relative to the table, so raising score raises both.
+analyze.py reports this metric; eval.py keeps a change only if it raises
+avg score by >= 1% with paired t > 2 (winrate never rescues a change).
+
+## What the top bots do (scraped)
+
+| bot | avg score | words/match | avg len | pts/word | 7+ letters | tiles won | paid/tile |
+|---|---|---|---|---|---|---|---|
+| LetterShark | 110.1 | 3.4 | 6.09 | 32.5 | 67% | 16.5 | 12.5 |
+| postturing | 94.0 | 3.0 | 6.11 | 30.2 | 55% | 14.8 | 11.8 |
+| Nijello | 93.9 | 3.0 | 5.90 | 31.6 | 50% | 12.9 | 13.7 |
+| Chinese Dante | 93.1 | 2.9 | 5.97 | 32.3 | 61% | 12.4 | 14.1 |
+
+#1's trick: **more tiles at a lower price per tile**, turned into 7+ letter
+words (3x). It wins ~4 more tiles per match than #2-#4 while paying less.
+
+Board-Scrabble asks that don't exist here: GADDAG/cross-words/hooks/
+parallel plays (no board), exchanges and blanks (none), 50-point bingo
+bonus (the bonus is the 3x multiplier at 7+ letters). Opponent selection
+isn't possible: the rolling lobby seats whoever queues, so we don't try.
+The valid wordlist is the module's own `../spacetimedb/wordlist.txt`
+(172,820 words), which the bot and arena already use.

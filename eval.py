@@ -14,8 +14,9 @@ are cached in data/eval_cache/.
 
 Verdict (also in data/eval_last.json), average score first (the
 leaderboard's "Avg score" = total_score / matches), winrate second:
-  IMPROVED  avg score significantly up (paired t > 2), or flat and winrate up
-  WORSE     avg score significantly down, or winrate down > 5 points
+  IMPROVED  avg score up >= 1% and significant (paired t > 2)
+  WORSE     avg score significantly down (paired t < -2)
+  NEUTRAL   anything else; winrate alone never keeps a change
   NEUTRAL   anything else
 """
 
@@ -127,9 +128,11 @@ def main():
     sds = math.sqrt(sum((x - ds) ** 2 for x in d_score) / max(1, n - 1))
     ts = ds / (sds / math.sqrt(n)) if sds > 0 else 0.0
 
-    if ts > 2 or (abs(ts) <= 2 and dw > 0):
+    # Keep only a significant (t > 2) avg-score gain of at least 1%. Winrate
+    # never rescues a change that doesn't raise avg score.
+    if ts > 2 and ds >= 0.01 * bs["avgScore"]:
         verdict = "IMPROVED"
-    elif ts < -2 or dw < -WORSE_DROP:
+    elif ts < -2:
         verdict = "WORSE"
     else:
         verdict = "NEUTRAL"

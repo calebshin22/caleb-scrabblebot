@@ -1,5 +1,5 @@
 {
-  "bid_aggression": 1,
+  "bid_aggression": 1.5,
   "new_letter_premium": 2,
   "duplicate_penalty": 1,
   "vowel_scarcity_threshold": 0.03,
