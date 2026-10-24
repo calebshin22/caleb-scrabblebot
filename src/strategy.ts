@@ -149,6 +149,17 @@ export function decideBid(ctx: BidContext): number {
     }
   }
 
+  // Top-bot anchor: they win ~23% of auctions by bidding the market's typical
+  // winning bid on letters their words need and letting the rest go.
+  if (P.top_anchor > 0 && value > 0) {
+    const price = marketPrice(ctx.letter);
+    if (price) {
+      const anchor = price.avgTop * P.top_anchor * Math.min(1, value / P.useful_value);
+      if (anchor > want) adjustments.push("top_anchor");
+      want = Math.max(want, anchor);
+    }
+  }
+
   // Balance is worthless once the match ends; spend it on useful tiles.
   if (
     value > 0 &&
