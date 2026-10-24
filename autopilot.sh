@@ -40,6 +40,9 @@ while true; do
   sed -n '/## Leaderboard/,/## Results/p' data/report.md | grep -E '^- ' | sed 's/^/    /'
   log "evolve";  python3 evolve_live.py || log "evolve failed"
   python3 live_eval.py | tail -6 | sed 's/^/    /'
+  # Keep GitHub in sync; main tracks the working branch.
+  git branch -f main HEAD 2>/dev/null
+  GIT_TERMINAL_PROMPT=0 git push -q origin HEAD main 2>&1 | tail -1 || log "push failed"
   log "sleeping ${CYCLE_MINUTES}m"
   sleep $((CYCLE_MINUTES * 60))
 done
