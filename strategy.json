@@ -63,11 +63,12 @@
     "market_1.0": {
       "market_floor": 1.0
     },
-    "no_counters": {
-      "counters_enabled": false
+    "spend_late": {
+      "endgame_spend_fraction": 0.6,
+      "endgame_bag_size": 25
     },
-    "regression": {
-      "regression_anchor": 0.9
+    "market_1.2": {
+      "market_floor": 1.2
     }
   },
   "market_floor": 0.8
