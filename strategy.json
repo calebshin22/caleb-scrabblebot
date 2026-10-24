@@ -18,7 +18,7 @@
   "behind_min_word_length": 5,
   "close_board_when_ahead": false,
   "ahead_defense_mult": 1.5,
-  "deception_enabled": true,
+  "deception_enabled": false,
   "price_set_rack_size": 5,
   "price_set_max_value": 5,
   "price_set_fraction": 0.95,
