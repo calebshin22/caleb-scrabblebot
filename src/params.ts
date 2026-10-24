@@ -24,6 +24,8 @@ export const DEFAULT_PARAMS = {
   first_price_floor: 0.6,         // ...but no less than value * this
   endgame_bag_size: 10,           // tiles left in the bag that count as endgame
   endgame_spend_fraction: 0,      // endgame: spend this share of balance per tile left
+  market_floor: 0,                // useful letters: bid at least this x the field's
+                                  // average price for the letter (data/market.json)
 
   // Score-dependent play ("open/close the board" in auction terms)
   open_board_when_behind: false,  // behind: bid harder, hold for long words
@@ -94,6 +96,7 @@ export const TUNABLE: Partial<
   first_price_floor: { kind: "float", min: 0, max: 1 },
   endgame_bag_size: { kind: "int", min: 0, max: 40 },
   endgame_spend_fraction: { kind: "float", min: 0, max: 1 },
+  market_floor: { kind: "float", min: 0, max: 2 },
   behind_aggression: { kind: "float", min: 0.5, max: 3 },
   behind_min_word_length: { kind: "int", min: 2, max: 8 },
   ahead_defense_mult: { kind: "float", min: 0, max: 5 },

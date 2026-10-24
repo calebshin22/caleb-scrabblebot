@@ -57,11 +57,15 @@
     "bid_1.0": {
       "bid_aggression": 1.0
     },
-    "tricks_on": {
-      "deception_enabled": true
-    },
     "len_6": {
       "play_min_length": 6
+    },
+    "market_0.8": {
+      "market_floor": 0.8
+    },
+    "market_1.0": {
+      "market_floor": 1.0
     }
-  }
+  },
+  "market_floor": 0
 }

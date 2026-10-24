@@ -4,6 +4,7 @@
 import { payoutFor, wordPayout, type Intel } from "./intel.js";
 import { LETTER_VALUE } from "./letters.js";
 import { logger, rackString } from "./logger.js";
+import { marketPrice } from "./market.js";
 import { PARAMS } from "./params.js";
 import { rand } from "./random.js";
 import {
@@ -134,6 +135,17 @@ export function decideBid(ctx: BidContext): number {
       const shaded = Math.min(want, Math.max(typical * P.first_price_shade, want * P.first_price_floor));
       if (shaded < want) adjustments.push("shade");
       want = shaded;
+    }
+  }
+
+  // Market anchor: for letters that help us, bid at least the going rate,
+  // so we actually win the tiles our words need.
+  if (P.market_floor > 0 && value > 0) {
+    const price = marketPrice(ctx.letter);
+    if (price) {
+      const floor = price.avgPaid * P.market_floor;
+      if (floor > want) adjustments.push("market");
+      want = Math.max(want, floor);
     }
   }
 

@@ -6,7 +6,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 const FILE = path.join(process.cwd(), "data", "bandit.json");
-type State = Record<string, { n: number; reward: number }>;
+type State = Record<string, { n: number; reward: number; sq?: number }>;
 
 const load = (): State => {
   try { return JSON.parse(fs.readFileSync(FILE, "utf8")); } catch { return {}; }
@@ -27,9 +27,11 @@ export function pickArm(arms: string[]): string | null {
 
 export function recordResult(arm: string, placement: number, players: number) {
   const s = load();
-  const a = (s[arm] ??= { n: 0, reward: 0 });
+  const a = (s[arm] ??= { n: 0, reward: 0, sq: 0 });
+  const r = players > 1 ? (players - placement) / (players - 1) : 0;
   a.n += 1;
-  a.reward += players > 1 ? (players - placement) / (players - 1) : 0;
+  a.reward += r;
+  a.sq = (a.sq ?? 0) + r * r; // for the evolver's significance tests
   fs.mkdirSync(path.dirname(FILE), { recursive: true });
   fs.writeFileSync(FILE, JSON.stringify(s, null, 2) + "\n");
 }
