@@ -30,6 +30,7 @@ EXPERIMENTS = os.path.join(ROOT, "experiments.md")
 
 # name: (kind, step, min, max). "mul" steps multiply, "add" steps add.
 SPACE = {
+    "market_floor": ("add", 0.2, 0, 2),
     "bid_aggression": ("mul", 1.25, 0.1, 8),
     "play_min_length": ("add", 1, 2, 8),
     "new_letter_premium": ("add", 2, 0, 30),
