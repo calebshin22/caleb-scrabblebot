@@ -57,9 +57,6 @@
     "no_market": {
       "market_floor": 0
     },
-    "bid_1.0": {
-      "bid_aggression": 1.0
-    },
     "market_1.0": {
       "market_floor": 1.0
     },
@@ -69,6 +66,9 @@
     },
     "market_1.2": {
       "market_floor": 1.2
+    },
+    "denial_1.09": {
+      "denial_fraction": 1.089
     }
   },
   "market_floor": 0.8

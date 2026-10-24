@@ -51,6 +51,11 @@ const DRY_RUN = flag("--dry-run");
 const ROUNDS = num("--rounds", 3);
 const SAMPLES = num("--samples", 100);
 const MIN_MATCHES = num("--min-matches", 5);
+const LAST = num("--last", 0); // only the most recent N replayable matches
+const ONLY = (() => {
+  const i = args.indexOf("--params");
+  return i >= 0 && i + 1 < args.length ? new Set(args[i + 1].split(",")) : null;
+})();
 
 // ---------- Log parsing ----------
 
@@ -192,8 +197,20 @@ interface Outcome {
   score: number;
   unspent: number;
   unplayed: number;
+  place: number;
   fitness: number;
 }
+
+// Opponents' real final scores per logged match (written from matches.db),
+// so a replayed score can be placed. Rating is place-based, so this is the
+// fitness: lower avg place is better; score breaks ties.
+const OPP_SCORES: Record<string, number[]> = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(new URL("../data/opp_scores.json", import.meta.url), "utf8"));
+  } catch {
+    return {};
+  }
+})();
 
 const playCache = new Map<string, string | null>();
 
@@ -211,6 +228,7 @@ function cachedChooseWord(
     PARAMS.hold_rack_size,
     PARAMS.leave_weight,
     PARAMS.bingo_bonus,
+    PARAMS.point_weight,
   ].join("|");
   if (playCache.has(key)) return playCache.get(key)!;
   const word = chooseWord({ myRack: rack, dictionary, bagRemaining });
@@ -296,7 +314,9 @@ function replayMatch(m: MatchLog, dictionary: string[]) {
     }
     playAll(bagRemaining);
   }
-  return { score, unspent: balance, unplayed: tiles(rack) };
+  const opp = OPP_SCORES[m.id];
+  const place = opp ? 1 + opp.filter((s) => s > score).length : NaN;
+  return { score, unspent: balance, unplayed: tiles(rack), place };
 }
 
 function evaluate(params: Params, matches: MatchLog[], dictionary: string[]): Outcome {
@@ -309,11 +329,14 @@ function evaluate(params: Params, matches: MatchLog[], dictionary: string[]): Ou
   const score = avg(outs.map((o) => o.score));
   const unspent = avg(outs.map((o) => o.unspent));
   const unplayed = avg(outs.map((o) => o.unplayed));
+  const placed = outs.filter((o) => !Number.isNaN(o.place));
+  const place = placed.length ? avg(placed.map((o) => o.place)) : NaN;
   return {
     score,
     unspent,
     unplayed,
-    fitness: score - unspent * UNSPENT_WEIGHT - unplayed * UNPLAYED_WEIGHT,
+    place,
+    fitness: placed.length ? -place + score / 1000 : score - unspent * UNSPENT_WEIGHT - unplayed * UNPLAYED_WEIGHT,
   };
 }
 
@@ -331,7 +354,7 @@ function mutate(params: Params, key: NumericParamKey, dir: 1 | -1): Params {
 }
 
 const fmt = (o: Outcome) =>
-  `fitness ${o.fitness.toFixed(2)} (score ${o.score.toFixed(1)}, unspent ${o.unspent.toFixed(1)}, unplayed ${o.unplayed.toFixed(1)})`;
+  `avg place ${o.place.toFixed(2)}, fitness ${o.fitness.toFixed(3)} (score ${o.score.toFixed(1)}, unspent ${o.unspent.toFixed(1)}, unplayed ${o.unplayed.toFixed(1)})`;
 
 function main() {
   const matches = readLog();
@@ -345,9 +368,10 @@ function main() {
   report(matches);
   if (REPORT_ONLY) return;
 
-  const replayable = matches.filter(
+  const all = matches.filter(
     (m) => m.start && m.end && m.start.resumed !== true && m.events.length > 0,
   );
+  const replayable = LAST > 0 ? all.slice(-LAST) : all;
   console.log(`\n=== Tuning (${replayable.length} replayable matches, ${SAMPLES} sim samples) ===`);
   if (replayable.length < MIN_MATCHES) {
     console.log(`Need at least ${MIN_MATCHES} replayable matches to tune; not changing strategy.json.`);
@@ -362,7 +386,7 @@ function main() {
 
   let best = current;
   let bestOut = baseline;
-  const keys = Object.keys(TUNABLE) as NumericParamKey[];
+  const keys = (Object.keys(TUNABLE) as NumericParamKey[]).filter((k) => !ONLY || ONLY.has(k));
   for (let round = 1; round <= ROUNDS; round++) {
     let roundBest: { params: Params; out: Outcome; change: string } | null = null;
     for (const key of keys) {
