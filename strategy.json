@@ -38,7 +38,7 @@
   "sim_min_rack_size": 4,
   "sim_samples": 500,
   "sim_draw_size": 6,
-  "sim_budget_ms": 250,
+  "sim_budget_ms": 120,
   "counters": {
     "deny_hoarder": {
       "defense_weight": 0.5,
