@@ -8,7 +8,9 @@
 
 Both sides play the same seeded games in scripts/arena.ts (the server's
 rules, opponents calibrated to the scraped market), so results are paired
-game by game. The baseline runs from a git worktree of its own commit, so
+game by game. By default against two opponent models, "real" and the more
+realistic "need" (bots that pay up for letters they need); a change is
+IMPROVED only if it improves against both, WORSE if it's worse against either. The baseline runs from a git worktree of its own commit, so
 code changes are judged as well as strategy.json changes. Baseline runs
 are cached in data/eval_cache/.
 
@@ -43,10 +45,10 @@ def run(cmd, cwd=ROOT, check=True):
     return r.stdout.strip()
 
 
-def arena(code_dir, strategy, args, out):
+def arena(code_dir, strategy, args, out, field):
     run(["npx", "--prefix", ROOT, "tsx", os.path.join(code_dir, "scripts", "arena.ts"),
          "--strategy", strategy, "--games", str(args.games), "--seed", str(args.seed),
-         "--samples", str(args.samples), "--field", args.field, "--out", out])
+         "--samples", str(args.samples), "--field", field, "--out", out])
     with open(out) as f:
         return json.load(f)
 
@@ -89,27 +91,51 @@ def main():
     ap.add_argument("--games", type=int, default=200)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--samples", type=int, default=100, help="Monte Carlo samples per bid")
-    ap.add_argument("--field", default="real", choices=["real", "sim"])
+    ap.add_argument("--field", default="real,need",
+                    help="comma-separated opponent models; a change must improve on all (default real,need)")
     ap.add_argument("--out", default="", help="result JSON (default data/eval_last.json)")
     args = ap.parse_args()
     if args.games < MIN_GAMES:
         sys.exit(f"--games must be at least {MIN_GAMES}")
     os.makedirs(CACHE, exist_ok=True)
 
-    cand_out = os.path.join(CACHE, f"candidate-{os.getpid()}.json")
-    cand = arena(ROOT, os.path.abspath(args.candidate), args, cand_out)
-    os.remove(cand_out)
-
+    fields = [f.strip() for f in args.field.split(",") if f.strip()]
     sha = run(["git", "rev-parse", args.baseline])
-    key = f"{sha[:12]}-{args.games}-{args.seed}-{args.samples}-{args.field}-{data_hash()}"
-    cached = os.path.join(CACHE, f"baseline-{key}.json")
-    if os.path.exists(cached):
-        with open(cached) as f:
-            base = json.load(f)
-    else:
-        baseline_dir(args.baseline)
-        base = arena(WORKTREE, os.path.join(WORKTREE, "strategy.json"), args, cached)
+    worktree_ready = False
+    per_field = {}
+    for field in fields:
+        cand_out = os.path.join(CACHE, f"candidate-{os.getpid()}-{field}.json")
+        cand = arena(ROOT, os.path.abspath(args.candidate), args, cand_out, field)
+        os.remove(cand_out)
+        key = f"{sha[:12]}-{args.games}-{args.seed}-{args.samples}-{field}-{data_hash()}"
+        cached = os.path.join(CACHE, f"baseline-{key}.json")
+        if os.path.exists(cached):
+            with open(cached) as f:
+                base = json.load(f)
+        else:
+            if not worktree_ready:
+                baseline_dir(args.baseline)
+                worktree_ready = True
+            base = arena(WORKTREE, os.path.join(WORKTREE, "strategy.json"), args, cached, field)
+        per_field[field] = compare(cand, base, args, sha)
 
+    # A change has to hold up against every opponent model.
+    verdicts = [r["verdict"] for r in per_field.values()]
+    if all(v == "IMPROVED" for v in verdicts):
+        verdict = "IMPROVED"
+    elif any(v == "WORSE" for v in verdicts):
+        verdict = "WORSE"
+    else:
+        verdict = "NEUTRAL"
+    print(f"VERDICT: {verdict}" + (f"  (per field: {', '.join(f'{k} {v}' for k, v in zip(per_field, verdicts))})"
+                                    if len(fields) > 1 else ""))
+    # Top-level numbers come from the last (most realistic) field.
+    result = dict(per_field[fields[-1]], verdict=verdict, fields=per_field)
+    with open(args.out or os.path.join(DATA, "eval_last.json"), "w") as f:
+        json.dump(result, f, indent=2)
+
+
+def compare(cand, base, args, sha):
     cs, bs = cand["summary"], base["summary"]
     # Paired per game: same seed, same field, same tiles.
     d_margin = [(c["myScore"] - c["bestOpponent"]) - (b["myScore"] - b["bestOpponent"])
@@ -137,21 +163,18 @@ def main():
     else:
         verdict = "NEUTRAL"
 
-    print(f"{n} paired games, seed {args.seed}, field {cs['field']}, baseline {args.baseline} ({sha[:8]})")
+    print(f"--- field {cs['field']}: {n} paired games, seed {args.seed}, baseline {args.baseline} ({sha[:8]})")
     print(summarize("candidate", cs))
     print(summarize("baseline", bs))
     print(f"winrate {100 * dw:+.1f} pts; games only the candidate won {cand_only}, only the baseline {base_only}")
     print(f"AVG SCORE {cs['avgScore']:.1f} vs {bs['avgScore']:.1f}: {ds:+.2f} per game (paired t = {ts:.2f})")
     print(f"margin vs best opponent {mean:+.2f} per game (paired t = {t:.2f})")
     print(f"field avg score {cs['fieldAvgScore']:.1f}, field winner {cs['fieldWinnerScore']:.1f}")
-    print(f"VERDICT: {verdict}")
-
-    result = {"verdict": verdict, "games": n, "seed": args.seed, "baseline": args.baseline,
-              "baseline_sha": sha, "candidate": cs, "baseline_summary": bs,
-              "winrate_delta": dw, "score_delta": ds, "score_t": ts, "margin_delta": mean, "paired_t": t,
-              "candidate_only_wins": cand_only, "baseline_only_wins": base_only}
-    with open(args.out or os.path.join(DATA, "eval_last.json"), "w") as f:
-        json.dump(result, f, indent=2)
+    print(f"field verdict: {verdict}")
+    return {"verdict": verdict, "games": n, "seed": args.seed, "baseline": args.baseline,
+            "baseline_sha": sha, "candidate": cs, "baseline_summary": bs,
+            "winrate_delta": dw, "score_delta": ds, "score_t": ts, "margin_delta": mean, "paired_t": t,
+            "candidate_only_wins": cand_only, "baseline_only_wins": base_only}
 
 
 if __name__ == "__main__":

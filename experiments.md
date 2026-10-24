@@ -15,3 +15,5 @@ scores ~15% below the real one (see DISCOVERY.md).
 | 7 | 2026-10-24 | tuning: Bid to deny letters that complete an opponent's best word | `defense_weight` 0 -> 0.3 | winrate 34.5% vs 33.0%, score 70.8 vs 69.3 | IMPROVED | next loop (one change at a time) |
 | 8 | 2026-10-24 | tuning: Defense_weight under the new score-first rule | `defense_weight` 0 -> 0.3 | avg score 71.5 vs 70.4, +1.1/game (t=1.3), 200 games | NEUTRAL | reverted |
 | 9 | 2026-10-24 | tuning: #1 (LetterShark) wins ~4 more tiles/match; we end with ~54 unspent money, which is worthless | `bid_aggression` 1 -> 1.5 | avg score 81.5 vs 70.4, +11.1/game (t=7.8), 200 games | IMPROVED | kept |
+| 10 | 2026-10-24 | tuning: Bid even harder; ~38 money still unspent | `bid_aggression` 1.5 -> 2.0 | avg score 82.2 vs 81.5, +0.7/game (t=0.4); unspent 24.8 vs 37.7 but no more tiles (Vickrey: higher bids mostly pay more for the same tiles) | NEUTRAL | reverted |
+| 11 | 2026-10-24 | tuning: Same, further | `bid_aggression` 1.5 -> 2.5 | avg score 82.0 vs 81.5, +0.5/game (t=0.3) | NEUTRAL | reverted |

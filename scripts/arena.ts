@@ -14,7 +14,10 @@
 // data/market.json so that, as a field of 5, their top and second bids
 // match the observed average top bid and price; scaled by the bot's
 // aggression. They hold out for 7+ letter words (5-6 for bots whose words
-// average shorter) and dump what they can when the bag runs low. Field "sim": the server's simulated bots, exactly.
+// average shorter) and dump what they can when the bag runs low.
+// Field "need": the same, but each bids more for letters that raise its own
+// best word (0.6x-1.4x), closer to how real bots bid.
+// Field "sim": the server's simulated bots, exactly.
 //
 // Same --seed, same games: runs of different strategies are paired.
 
@@ -26,7 +29,7 @@ import { LETTER_VALUE } from "../src/letters.js";
 import { loadOpponents, pickCounter, type OpponentProfile } from "../src/counters.js";
 import { PARAMS, readStrategy, type Params } from "../src/params.js";
 import { seedRandom } from "../src/random.js";
-import { forEachWord, initSimulator, setDeterministic } from "../src/simulator.js";
+import { forEachWord, initSimulator, playGain, setDeterministic } from "../src/simulator.js";
 import { chooseWord, decideBid } from "../src/strategy.js";
 
 const args = process.argv.slice(2);
@@ -153,7 +156,14 @@ function fieldBid(p: Player, letter: string, market: Record<string, LetterMarket
     return Math.max(Math.min(Math.max(base + jitter, 1), p.balance), 0);
   }
   const m = market[letter];
-  const bid = Math.round((m.mu + m.sigma * gaussian(rng)) * p.aggression);
+  let need = 1;
+  if (FIELD === "need") {
+    // Real bots pay up for letters that help their own word and pass on
+    // ones that don't. Scaled to average ~1 so prices stay calibrated.
+    const gain = playGain(p.rack, letter, 0);
+    need = 0.6 + 0.8 * Math.min(1, gain / 10);
+  }
+  const bid = Math.round((m.mu + m.sigma * gaussian(rng)) * p.aggression * need);
   return Math.max(0, Math.min(bid, p.balance));
 }
 
@@ -356,7 +366,7 @@ function main() {
     games: GAMES,
     seed: SEED,
     samples: SAMPLES,
-    field: profiles.length > 0 && FIELD !== "sim" ? "real" : "sim",
+    field: profiles.length > 0 && FIELD !== "sim" ? FIELD : "sim",
     winrate: avg((r) => (r.won ? 1 : 0)),
     avgScore: avg((r) => r.myScore),
     avgDiff: avg((r) => r.myScore - r.bestOpponent),
