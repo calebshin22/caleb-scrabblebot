@@ -1,0 +1,55 @@
+{
+  "bid_aggression": 1,
+  "new_letter_premium": 2,
+  "duplicate_penalty": 1,
+  "vowel_scarcity_threshold": 0.03,
+  "vowel_scarcity_mult": 1.4,
+  "u_with_q_mult": 2.5,
+  "q_without_u_mult": 0.2,
+  "denial_rack_size": 5,
+  "denial_fraction": 0.9,
+  "defense_weight": 0,
+  "first_price_shade": 1.1,
+  "first_price_floor": 0.6,
+  "endgame_bag_size": 10,
+  "endgame_spend_fraction": 0,
+  "open_board_when_behind": false,
+  "behind_aggression": 1.15,
+  "behind_min_word_length": 5,
+  "close_board_when_ahead": false,
+  "ahead_defense_mult": 1.5,
+  "deception_enabled": true,
+  "price_set_rack_size": 5,
+  "price_set_max_value": 5,
+  "price_set_fraction": 0.95,
+  "price_set_cap_fraction": 0.5,
+  "bid_jitter": 0.12,
+  "skip_chance": 0.08,
+  "skip_max_value": 8,
+  "point_weight": 1,
+  "leave_weight": 0,
+  "bingo_bonus": 0,
+  "random_top_k": 1,
+  "play_min_length": 2,
+  "play_min_score": 0,
+  "hold_rack_size": 0,
+  "tempo_hold_enabled": false,
+  "counters_enabled": true,
+  "sim_min_rack_size": 4,
+  "sim_samples": 500,
+  "sim_draw_size": 6,
+  "sim_budget_ms": 250,
+  "counters": {
+    "deny_hoarder": {
+      "defense_weight": 0.5,
+      "denial_rack_size": 4
+    },
+    "price_set_aggressive": {
+      "price_set_fraction": 1
+    },
+    "outbid_cheap": {
+      "denial_fraction": 1.1
+    },
+    "default": {}
+  }
+}

@@ -63,6 +63,10 @@ const lastWordAttemptByMatch = new Map<string, number>();
 const WORD_RETRY_MS = 500;
 const intelByMatch = new Map<string, Intel>();
 const startedMatches = new Set<string>();
+// Matches this bot is or was in, so handlers can skip the rest of the
+// database's history (hundreds of thousands of rows on connect) in O(1).
+const myMatchIds = new Set<string>();
+const endedThisSession = new Set<string>();
 
 function resolveMyBotId(conn: DbConnection): bigint | null {
   if (!myIdentity) return null;
@@ -86,13 +90,20 @@ function participantForMatch(
   conn: DbConnection,
   matchId: bigint,
 ): { balance: number; score: number } | null {
-  if (myBotId === null) return null;
+  if (myBotId === null || !myMatchIds.has(String(matchId))) return null;
   for (const p of conn.db.matchParticipant.iter()) {
     if (p.matchId !== matchId) continue;
     if (p.botId !== myBotId) continue;
     return { balance: Number(p.balance), score: Number(p.score) };
   }
   return null;
+}
+
+function inMyRunningMatch(conn: DbConnection, matchId: bigint): boolean {
+  return (
+    myMatchIds.has(String(matchId)) &&
+    conn.db.matchState.id.find(matchId)?.status.tag === "Running"
+  );
 }
 
 // Intel for a match this bot is in, built on first use from what's already
@@ -103,7 +114,7 @@ function intelFor(conn: DbConnection, matchId: bigint): Intel | null {
   const key = String(matchId);
   const existing = intelByMatch.get(key);
   if (existing) return existing;
-  if (!participantForMatch(conn, matchId)) return null;
+  if (!inMyRunningMatch(conn, matchId)) return null;
 
   const results = Array.from(conn.db.auctionResult.iter()).filter(
     (r) => r.matchId === matchId,
@@ -177,6 +188,7 @@ function onMatchEnd(conn: DbConnection, matchId: bigint) {
   );
   intelByMatch.delete(String(matchId));
   startedMatches.delete(String(matchId));
+  endedThisSession.add(String(matchId));
 }
 
 // A reducer call fails when the module refuses it, often for an expected
@@ -304,10 +316,13 @@ function onConnect(conn: DbConnection, identity: Identity, token: string) {
     if (a.status.tag === "Open") tryBid(conn, a.id, a.matchId, a.letter);
   });
   conn.db.matchParticipant.onInsert((_ctx, p) => {
-    if (p.botId === myBotId) onMatchStart(conn, p.matchId);
+    if (p.botId !== myBotId) return;
+    myMatchIds.add(String(p.matchId));
+    onMatchStart(conn, p.matchId);
   });
   conn.db.auctionTopBidArchive.onInsert((_ctx, a) => {
-    if (participantForMatch(conn, a.matchId)) {
+    const key = String(a.matchId);
+    if (intelByMatch.has(key) || endedThisSession.has(key)) {
       logger.logTopBid(a.matchId, { auctionId: a.auctionId, topBid: Number(a.topBid) });
     }
   });
@@ -318,7 +333,7 @@ function onConnect(conn: DbConnection, identity: Identity, token: string) {
     for (const intel of intelByMatch.values()) intel.myBotId = myBotId;
   });
   conn.db.auctionResult.onInsert((_ctx, r) => {
-    if (myBotId === null) return;
+    if (myBotId === null || !inMyRunningMatch(conn, r.matchId)) return;
     const existed = intelByMatch.has(String(r.matchId));
     const intel = intelFor(conn, r.matchId);
     if (intel && existed) intel.onAuctionResult(r);
@@ -332,7 +347,7 @@ function onConnect(conn: DbConnection, identity: Identity, token: string) {
   });
 
   conn.db.wordPlay.onInsert((_ctx, w) => {
-    if (myBotId === null) return;
+    if (myBotId === null || !inMyRunningMatch(conn, w.matchId)) return;
     const existed = intelByMatch.has(String(w.matchId));
     const intel = intelFor(conn, w.matchId);
     if (intel && existed) intel.onWordPlay(w);
@@ -383,6 +398,9 @@ function bootstrapActivity(conn: DbConnection) {
         console.log(`[${BOT_NAME}] registered for tournament ${TOURNAMENT_ID}`),
       )
       .catch(logFailure(`registering for tournament ${TOURNAMENT_ID}`));
+  }
+  for (const p of conn.db.matchParticipant.iter()) {
+    if (p.botId === myBotId) myMatchIds.add(String(p.matchId));
   }
   joinLobby(conn);
   for (const p of conn.db.matchParticipant.iter()) {

@@ -1,8 +1,8 @@
 // Reads data/matches.jsonl, reports how the bot has been doing, then
-// hill-climbs params.json by replaying logged matches under mutated params.
+// hill-climbs strategy.json by replaying logged matches under mutated params.
 //
 //   npm run report               stats only
-//   npm run tune                 stats, tuning, and write params.json if better
+//   npm run tune                 stats, tuning, and write strategy.json if better
 //   npm run tune -- --dry-run    tune but don't write
 //   flags: --rounds N (3), --samples N (100), --min-matches N (5)
 //
@@ -206,11 +206,11 @@ function cachedChooseWord(
   const key = [
     [...rack].sort().join(""),
     endgame,
-    PARAMS.playMinLength,
-    PARAMS.playMinScore,
-    PARAMS.holdRackSize,
-    PARAMS.leaveQualityWeight,
-    PARAMS.bingoBonus,
+    PARAMS.play_min_length,
+    PARAMS.play_min_score,
+    PARAMS.hold_rack_size,
+    PARAMS.leave_weight,
+    PARAMS.bingo_bonus,
   ].join("|");
   if (playCache.has(key)) return playCache.get(key)!;
   const word = chooseWord({ myRack: rack, dictionary, bagRemaining });
@@ -300,7 +300,7 @@ function replayMatch(m: MatchLog, dictionary: string[]) {
 }
 
 function evaluate(params: Params, matches: MatchLog[], dictionary: string[]): Outcome {
-  Object.assign(PARAMS, params, { simSamples: SAMPLES });
+  Object.assign(PARAMS, params, { sim_samples: SAMPLES });
   resetPriceHistory();
   // Same jitter stream for every candidate, so fitness differences come
   // from the params, not the dice.
@@ -350,7 +350,7 @@ function main() {
   );
   console.log(`\n=== Tuning (${replayable.length} replayable matches, ${SAMPLES} sim samples) ===`);
   if (replayable.length < MIN_MATCHES) {
-    console.log(`Need at least ${MIN_MATCHES} replayable matches to tune; not changing params.json.`);
+    console.log(`Need at least ${MIN_MATCHES} replayable matches to tune; not changing strategy.json.`);
     return;
   }
 
@@ -387,17 +387,17 @@ function main() {
 
   const changed = (Object.keys(DEFAULT_PARAMS) as ParamKey[]).filter((k) => best[k] !== current[k]);
   if (changed.length === 0 || bestOut.fitness <= baseline.fitness) {
-    console.log("\nNo improvement found; params.json unchanged.");
+    console.log("\nNo improvement found; strategy.json unchanged.");
     return;
   }
   console.log(`\nBest: ${fmt(bestOut)}  (was ${baseline.fitness.toFixed(2)})`);
   for (const k of changed) console.log(`  ${k}: ${current[k]} -> ${best[k]}`);
   if (DRY_RUN) {
-    console.log("--dry-run: params.json unchanged.");
+    console.log("--dry-run: strategy.json unchanged.");
     return;
   }
   // Compute knobs were overridden for the replay; keep the file's values.
-  saveParams({ ...best, simSamples: current.simSamples, simBudgetMs: current.simBudgetMs }, PARAMS_PATH);
+  saveParams({ ...best, sim_samples: current.sim_samples, sim_budget_ms: current.sim_budget_ms }, PARAMS_PATH);
   console.log(`Wrote ${PARAMS_PATH}. The bot picks it up at its next match start.`);
 }
 

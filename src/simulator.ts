@@ -12,6 +12,7 @@ let firstChild = new Int32Array(0);
 let nextSibling = new Int32Array(0);
 let terminal = new Uint8Array(0);
 let ready = false;
+let source: readonly string[] | null = null;
 
 const VALUES = new Int32Array(26);
 for (let c = 0; c < 26; c++) VALUES[c] = LETTER_VALUE[String.fromCharCode(65 + c)] ?? 0;
@@ -53,10 +54,46 @@ export function initSimulator(dictionary: readonly string[]) {
   nextSibling = Int32Array.from(NS);
   terminal = Uint8Array.from(T);
   ready = true;
+  source = dictionary;
 }
 
 export function simulatorReady(): boolean {
   return ready;
+}
+
+// Whether the trie was built from this exact wordlist array.
+export function builtFrom(dictionary: readonly string[]): boolean {
+  return ready && source === dictionary;
+}
+
+// Calls `visit` for every word `rack` can spell, in alphabetical order.
+export function forEachWord(rack: Map<string, number>, visit: (word: string) => void) {
+  const counts = toCounts(rack);
+  const path: number[] = [];
+  const walk = (node: number) => {
+    for (let child = firstChild[node]; child !== -1; child = nextSibling[child]) {
+      const c = letterOf[child];
+      if (counts[c] === 0) continue;
+      counts[c]--;
+      path.push(c);
+      if (terminal[child]) visit(String.fromCharCode(...path.map((x) => x + 65)));
+      walk(child);
+      path.pop();
+      counts[c]++;
+    }
+  };
+  walk(0);
+}
+
+// How much `letter` raises the best play for `rack`: an opponent's "best
+// reply" if they win it.
+export function playGain(rack: Map<string, number>, letter: string, bingoBonus: number): number {
+  const counts = toCounts(rack);
+  const before = bestValue(counts, bingoBonus);
+  const c = letter.charCodeAt(0) - 65;
+  if (c < 0 || c > 25) return 0;
+  counts[c]++;
+  return bestValue(counts, bingoBonus) - before;
 }
 
 // Best play value for letter counts `counts` (mutated and restored).
