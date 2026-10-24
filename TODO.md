@@ -34,4 +34,14 @@ equivalents or marked N/A (see DISCOVERY.md, "Mapping the spec").
 ## Phase 5: Self-improvement loop
 - [x] .claude/commands/evolve.md, experiments.md
 - [x] optimize.py (coordinate search on arena)
-- [ ] loop.sh, run end-to-end, commit
+- [x] loop.sh; autopilot.sh + evolve_live.py for live-data evolution
+
+## Running it
+
+- `BOT_NAME=caleb ./autopilot.sh` — hands-off: keeps cortado playing, and
+  every 30 min scrapes, analyzes and runs `evolve_live.py` (promote / retire
+  / spawn strategy variants from live placements). Commits each change.
+- `python3 live_eval.py` — real results per strategy variant (the honest judge).
+- `cat data/bandit.json` — the live learner's per-variant record.
+- `python3 eval.py` — arena check (pre-screen only; it runs optimistic).
+- Stop everything: `pkill -f autopilot.sh; pkill -f run.sh; pkill -f src/index.ts`
