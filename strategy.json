@@ -54,24 +54,16 @@
   },
   "bandit_arms": {
     "base": {},
-    "no_market": {
-      "market_floor": 0
+    "cortado_v1": {
+      "engine_doppio": false
     },
-    "market_1.0": {
-      "market_floor": 1.0
-    },
-    "spend_late": {
-      "endgame_spend_fraction": 0.6,
-      "endgame_bag_size": 25
-    },
-    "denial_1.09": {
-      "denial_fraction": 1.089
-    },
-    "replay_best": {
+    "cortado_replay": {
+      "engine_doppio": false,
       "bid_aggression": 1.65,
       "denial_fraction": 1.198,
       "market_floor": 0.72
     }
   },
-  "market_floor": 0.8
+  "market_floor": 0.8,
+  "engine_doppio": true
 }

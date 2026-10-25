@@ -61,6 +61,10 @@ export const DEFAULT_PARAMS = {
   hold_rack_size: 0,              // hold until the rack has this many tiles
   tempo_hold_enabled: false,      // see the commented-out stub in chooseWord
 
+  // Use Doppio's engine (src/doppio, from a teammate's top-5 bot) for bids
+  // and words instead of cortado's own strategy.
+  engine_doppio: false,
+
   // Per-opponent counters from data/opponents.json (overrides in "counters")
   counters_enabled: true,
 

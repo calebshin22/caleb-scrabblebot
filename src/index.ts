@@ -35,6 +35,7 @@ import { applyCounter, ARMS, loadParams, PARAMS } from "./params.js";
 import { pickArm, recordResult } from "./bandit.js";
 import { loadOpponents, pickCounter } from "./counters.js";
 import { initSimulator } from "./simulator.js";
+import { buildContext, doppio, MatchHistory, rackArray } from "./doppio/engine.js";
 
 const HOST = process.env.STDB_HOST ?? "https://maincloud.spacetimedb.com";
 const DB_NAME = process.env.STDB_DB ?? "scrabblebot";
@@ -66,6 +67,8 @@ const WORD_RETRY_MS = 500;
 const intelByMatch = new Map<string, Intel>();
 const startedMatches = new Set<string>();
 const armByMatch = new Map<string, string>();
+// Public event history per match, for the Doppio engine.
+const historyByMatch = new Map<string, MatchHistory>();
 // Matches this bot is or was in, so handlers can skip the rest of the
 // database's history (hundreds of thousands of rows on connect) in O(1).
 const myMatchIds = new Set<string>();
@@ -149,6 +152,10 @@ function intelFor(conn: DbConnection, matchId: bigint): Intel | null {
   }
 
   const intel = new Intel(myBotId, starting, matchId);
+  const history = new MatchHistory(rackArray(starting));
+  for (const r of results) history.addAuction(r.closedAt.microsSinceUnixEpoch, r.auctionId, r.letter, r.winnerBotId, r.paid);
+  for (const w of plays) history.addWord(w.playedAt.microsSinceUnixEpoch, w.botId, w.word, w.totalReward);
+  historyByMatch.set(key, history);
   // Auctions and plays interleave; replaying results first can only misplace
   // a played letter as hidden-rack, which leaves the counts unchanged.
   for (const r of results) intel.onAuctionResult(r);
@@ -230,6 +237,7 @@ function onMatchEnd(conn: DbConnection, matchId: bigint) {
     `[${BOT_NAME}] match ${matchId} final: balance ${me?.balance ?? "?"}, rack '${rackString(rack)}', inferred bag ${intel?.unseenTotal() ?? "?"} (actual ${m?.bagTotal ?? "?"})`,
   );
   intelByMatch.delete(String(matchId));
+  historyByMatch.delete(String(matchId));
   startedMatches.delete(String(matchId));
   endedThisSession.add(String(matchId));
 }
@@ -245,6 +253,33 @@ function logFailure(what: string) {
     );
 }
 
+// Doppio's decision context for a match, or null when it isn't ready.
+function doppioContext(conn: DbConnection, matchId: bigint, auctionId: bigint | null, letter: string) {
+  if (myBotId === null) return null;
+  const m = conn.db.matchState.id.find(matchId);
+  const me = participantForMatch(conn, matchId);
+  const history = historyByMatch.get(String(matchId));
+  if (!m || !me || !history) return null;
+  return buildContext({
+    matchId,
+    auctionId,
+    letter,
+    myBotId,
+    myRack: rackForMatch(conn, matchId),
+    myBalance: me.balance,
+    myScore: me.score,
+    bagTotal: m.bagTotal,
+    startingRackSize: m.startingRackSize,
+    auctionType: m.auctionType.tag,
+    participants: Array.from(conn.db.matchParticipant.iter()).filter((p) => p.matchId === matchId),
+    simulatedStrategy: (id) => {
+      const b = conn.db.bot.id.find(id);
+      return b?.isSimulated ? b.strategy.tag : undefined;
+    },
+    history,
+  });
+}
+
 function tryBid(
   conn: DbConnection,
   auctionId: bigint,
@@ -256,6 +291,21 @@ function tryBid(
   if (bidsByAuction.has(key)) return;
   const participant = participantForMatch(conn, matchId);
   if (!participant) return;
+  intelFor(conn, matchId); // also seeds the match history
+  if (PARAMS.engine_doppio) {
+    const ctx = doppioContext(conn, matchId, auctionId, letter);
+    if (ctx) {
+      const amount = doppio().decideBid(ctx);
+      bidsByAuction.add(key);
+      historyByMatch.get(String(matchId))?.myBids.set(String(auctionId), amount);
+      if (amount <= 0) return;
+      conn.reducers
+        .submitBid({ auctionId, amount: BigInt(amount) })
+        .catch(logFailure(`bid on auction ${auctionId}`));
+      console.log(`[${BOT_NAME}] bid ${amount} on '${letter}' (match ${matchId}, auction ${auctionId}, doppio)`);
+      return;
+    }
+  }
   const amount = decideBid({
     letter,
     myBalance: participant.balance,
@@ -292,7 +342,14 @@ function tryPlayWord(conn: DbConnection) {
     const key = String(matchId);
     if (now - (lastWordAttemptByMatch.get(key) ?? 0) < WORD_RETRY_MS) continue;
     lastWordAttemptByMatch.set(key, now);
-    const word = chooseWord({
+    let word: string | null;
+    if (PARAMS.engine_doppio && historyByMatch.has(key)) {
+      const m = conn.db.matchState.id.find(matchId);
+      const a = m?.currentAuctionId !== undefined ? conn.db.auction.id.find(m.currentAuctionId) : undefined;
+      const ctx = doppioContext(conn, matchId, a?.id ?? null, a?.letter ?? "");
+      word = ctx ? doppio().chooseWord(ctx) : null;
+      if (word) logger.logPlay(matchId, { word, score: 0 });
+    } else word = chooseWord({
       myRack: rackForMatch(conn, matchId),
       dictionary: DICTIONARY,
       matchId,
@@ -386,7 +443,10 @@ function onConnect(conn: DbConnection, identity: Identity, token: string) {
     if (myBotId === null || !inMyRunningMatch(conn, r.matchId)) return;
     const existed = intelByMatch.has(String(r.matchId));
     const intel = intelFor(conn, r.matchId);
-    if (intel && existed) intel.onAuctionResult(r);
+    if (intel && existed) {
+      intel.onAuctionResult(r);
+      historyByMatch.get(String(r.matchId))?.addAuction(r.closedAt.microsSinceUnixEpoch, r.auctionId, r.letter, r.winnerBotId, r.paid);
+    }
     const winner =
       r.winnerBotId !== undefined && r.winnerBotId !== null
         ? String(r.winnerBotId)
@@ -400,7 +460,10 @@ function onConnect(conn: DbConnection, identity: Identity, token: string) {
     if (myBotId === null || !inMyRunningMatch(conn, w.matchId)) return;
     const existed = intelByMatch.has(String(w.matchId));
     const intel = intelFor(conn, w.matchId);
-    if (intel && existed) intel.onWordPlay(w);
+    if (intel && existed) {
+      intel.onWordPlay(w);
+      historyByMatch.get(String(w.matchId))?.addWord(w.playedAt.microsSinceUnixEpoch, w.botId, w.word, w.totalReward);
+    }
   });
 
   // When a match this bot was in ends, hop back into the lobby.
@@ -467,6 +530,7 @@ function main() {
   enableLogging();
   const t0 = performance.now();
   initSimulator(DICTIONARY);
+  doppio(); // index the wordlist now, not on the first bid
   console.log(
     `[${BOT_NAME}] simulator ready in ${Math.round(performance.now() - t0)} ms`,
   );
