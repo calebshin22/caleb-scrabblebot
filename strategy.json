@@ -73,8 +73,8 @@
       "doppio_bid_scale": 1.4375
     },
     "replay_best": {
-      "denial_rack_size": 4,
-      "denial_fraction": 1.089
+      "denial_rack_size": 3,
+      "denial_fraction": 0.99
     }
   },
   "market_floor": 0.8,
