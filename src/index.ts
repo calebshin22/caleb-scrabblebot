@@ -69,6 +69,9 @@ const startedMatches = new Set<string>();
 const armByMatch = new Map<string, string>();
 // Public event history per match, for the Doppio engine.
 const historyByMatch = new Map<string, MatchHistory>();
+// SIGUSR2: exit once no match is running (run.sh restarts us on new code),
+// so restarts never cost a match.
+let exitWhenIdle = false;
 // Matches this bot is or was in, so handlers can skip the rest of the
 // database's history (hundreds of thousands of rows on connect) in O(1).
 const myMatchIds = new Set<string>();
@@ -253,6 +256,19 @@ function logFailure(what: string) {
     );
 }
 
+// Doppio's engine with the settings from strategy.json.
+function doppioEngine() {
+  return doppio({
+    bidScale: PARAMS.doppio_bid_scale,
+    coinReturn: PARAMS.doppio_coin_return,
+    denialWeight: PARAMS.doppio_denial_weight,
+    winShare: PARAMS.doppio_win_share,
+    reserveCoins: PARAMS.doppio_reserve_coins,
+    optionWeight: PARAMS.doppio_option_weight,
+    rolloutWeight: PARAMS.doppio_rollout_weight,
+  });
+}
+
 // Doppio's decision context for a match, or null when it isn't ready.
 function doppioContext(conn: DbConnection, matchId: bigint, auctionId: bigint | null, letter: string) {
   if (myBotId === null) return null;
@@ -295,7 +311,7 @@ function tryBid(
   if (PARAMS.engine_doppio) {
     const ctx = doppioContext(conn, matchId, auctionId, letter);
     if (ctx) {
-      const amount = doppio().decideBid(ctx);
+      const amount = doppioEngine().decideBid(ctx);
       bidsByAuction.add(key);
       historyByMatch.get(String(matchId))?.myBids.set(String(auctionId), amount);
       if (amount <= 0) return;
@@ -347,7 +363,7 @@ function tryPlayWord(conn: DbConnection) {
       const m = conn.db.matchState.id.find(matchId);
       const a = m?.currentAuctionId !== undefined ? conn.db.auction.id.find(m.currentAuctionId) : undefined;
       const ctx = doppioContext(conn, matchId, a?.id ?? null, a?.letter ?? "");
-      word = ctx ? doppio().chooseWord(ctx) : null;
+      word = ctx ? doppioEngine().chooseWord(ctx) : null;
       if (word) logger.logPlay(matchId, { word, score: 0 });
     } else word = chooseWord({
       myRack: rackForMatch(conn, matchId),
@@ -475,6 +491,11 @@ function onConnect(conn: DbConnection, identity: Identity, token: string) {
       );
       if (wasIn) {
         onMatchEnd(conn, neu.id);
+        if (exitWhenIdle) {
+          console.log(`[${BOT_NAME}] match ${neu.id} ended; restarting as requested`);
+          void flush().finally(() => process.exit(0));
+          return;
+        }
         console.log(`[${BOT_NAME}] match ${neu.id} ended; rejoining lobby`);
         joinLobby(conn);
       }
@@ -526,11 +547,20 @@ function bootstrapActivity(conn: DbConnection) {
 }
 
 function main() {
+  process.on("SIGUSR2", () => {
+    exitWhenIdle = true;
+    if (intelByMatch.size === 0) {
+      console.log(`[${BOT_NAME}] restart requested while idle; exiting`);
+      void flush().finally(() => process.exit(0));
+    } else {
+      console.log(`[${BOT_NAME}] restart requested; exiting after this match`);
+    }
+  });
   loadParams();
   enableLogging();
   const t0 = performance.now();
   initSimulator(DICTIONARY);
-  doppio(); // index the wordlist now, not on the first bid
+  doppioEngine(); // index the wordlist now, not on the first bid
   console.log(
     `[${BOT_NAME}] simulator ready in ${Math.round(performance.now() - t0)} ms`,
   );

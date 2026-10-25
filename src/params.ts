@@ -64,6 +64,13 @@ export const DEFAULT_PARAMS = {
   // Use Doppio's engine (src/doppio, from a teammate's top-5 bot) for bids
   // and words instead of cortado's own strategy.
   engine_doppio: false,
+  doppio_bid_scale: 1.25,         // Doppio's own settings (its defaults), so the
+  doppio_coin_return: 0.7,        // live learner and evolver can tune them
+  doppio_denial_weight: 0.2,
+  doppio_win_share: 0.6,
+  doppio_reserve_coins: 8,
+  doppio_option_weight: 0.9,
+  doppio_rollout_weight: 0.9,
 
   // Per-opponent counters from data/opponents.json (overrides in "counters")
   counters_enabled: true,
@@ -109,6 +116,11 @@ export const TUNABLE: Partial<
   top_anchor: { kind: "float", min: 0, max: 2 },
   useful_value: { kind: "float", min: 1, max: 30 },
   regression_anchor: { kind: "float", min: 0, max: 2 },
+  doppio_bid_scale: { kind: "float", min: 0.5, max: 3 },
+  doppio_coin_return: { kind: "float", min: 0.2, max: 2 },
+  doppio_denial_weight: { kind: "float", min: 0, max: 2 },
+  doppio_win_share: { kind: "float", min: 0.2, max: 1.5 },
+  doppio_reserve_coins: { kind: "int", min: 0, max: 30 },
   behind_aggression: { kind: "float", min: 0.5, max: 3 },
   behind_min_word_length: { kind: "int", min: 2, max: 8 },
   ahead_defense_mult: { kind: "float", min: 0, max: 5 },

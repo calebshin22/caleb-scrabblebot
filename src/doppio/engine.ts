@@ -3,14 +3,20 @@
 // never rescans the whole database.
 
 import { loadDictionary } from "./dictionary.js";
-import { AdaptiveStrategy } from "./strategy.js";
+import { AdaptiveStrategy, type StrategyOptions } from "./strategy.js";
 import type { DecisionContext, ParticipantObservation } from "./types.js";
 
-let engine: AdaptiveStrategy | null = null;
+// One engine per distinct settings, so strategy.json variants can tune them.
+const engines = new Map<string, AdaptiveStrategy>();
 
-export function doppio(): AdaptiveStrategy {
-  engine ??= new AdaptiveStrategy(loadDictionary());
-  return engine;
+export function doppio(options: Partial<StrategyOptions> = {}): AdaptiveStrategy {
+  const key = JSON.stringify(options);
+  let e = engines.get(key);
+  if (!e) {
+    e = new AdaptiveStrategy(loadDictionary(), options);
+    engines.set(key, e);
+  }
+  return e;
 }
 
 interface Event {

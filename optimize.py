@@ -30,6 +30,11 @@ EXPERIMENTS = os.path.join(ROOT, "experiments.md")
 
 # name: (kind, step, min, max). "mul" steps multiply, "add" steps add.
 SPACE = {
+    "doppio_bid_scale": ("mul", 1.15, 0.5, 3),
+    "doppio_coin_return": ("mul", 1.15, 0.2, 2),
+    "doppio_denial_weight": ("add", 0.15, 0, 2),
+    "doppio_win_share": ("mul", 1.2, 0.2, 1.5),
+    "doppio_reserve_coins": ("add", 4, 0, 30),
     "market_floor": ("add", 0.2, 0, 2),
     "bid_aggression": ("mul", 1.25, 0.1, 8),
     "play_min_length": ("add", 1, 2, 8),
