@@ -33,3 +33,4 @@ scores ~15% below the real one (see DISCOVERY.md).
 | 25 | 2026-10-24 | Beat Cortadomacchiato by tuning its fixed, hand-picked settings live | expose `cortadomacchiato_*` settings; live variants `cortadomacchiato_bs1.5` (bid scale 1.25 -> 1.5) and `cortadomacchiato_coin0.55` (coin return 0.7 -> 0.55); evolver may mutate them | live trial | LIVE TRIAL | spawned |
 | 26 | 2026-10-24 | Restarts mid-match cost the whole match (bot catches up on history; bids land late: two 0-point matches) | SIGUSR2 = exit after the current match; run.sh restarts on new code | - | FIX | kept |
 | 27 | 2026-10-24 | tuning: spawn live variant `doppio_bid_scale_1.4375` | `doppio_bid_scale` 1.25 -> 1.4375 | arena pre-screen NEUTRAL, placement +0.00/game | LIVE TRIAL | spawned |
+| 28 | 2026-10-24 | replay search on the last 60 real matches | `replay_best` = {'denial_rack_size': 4, 'denial_fraction': 1.089} | replay avg place 5.22 -> 3.93 | IMPROVED (replay) | live variant refreshed |
