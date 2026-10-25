@@ -39,7 +39,7 @@ variants, so live placement can reverse the switch. The replay judge
 - Bash reads scripts as it runs: after editing `autopilot.sh`, kill it
   (`pkill -9 -f autopilot.sh; rmdir data/.autopilot.lock`) and restart.
   After editing `src/`, restart the bot **between matches** with
-  `pkill -USR2 -f src/index.ts`: it finishes its current match, exits, and
+  `pkill -USR2 -f 'preflight.cjs.*src/index.ts'` (only the real bot process; the `tsx` launcher dies on SIGUSR2 and run.sh would start a second bot): it finishes its current match, exits, and
   run.sh restarts it on the new code. A plain kill mid-match costs that
   whole match (the bot spends its first minutes catching up on history).
   `strategy.json` changes apply at the next match start, no restart.
