@@ -60,13 +60,13 @@ parallel pushed late bids (1-second auctions) from 0% to ~4%.
 | denial_1.09 | denial_fraction 1.089 | 3 | 0.33 |
 | replay_best | bid 1.65, denial 1.198, market_floor 0.72 (replay 5.13 -> 3.98) | 3 | 0.27 |
 
-## In flight when this was written
+## Last replay search (done)
 
-- A broad replay search in an isolated copy, `/tmp/tune3` (output
-  `/tmp/exp/tune3.out`), from the replay_best settings, over top_anchor,
-  regression_anchor, useful_value, sim_draw_size, sim_min_rack_size,
-  denial_rack_size, endgame_spend_fraction, new_letter_premium. If it finds
-  an improvement, add it as a live variant (or refresh replay_best).
+From the replay_best settings (replay avg place 3.79), a broad search over
+top_anchor, regression_anchor, useful_value, sim_draw_size,
+sim_min_rack_size, denial_rack_size, endgame_spend_fraction and
+new_letter_premium found no improving step: replay_best is a local optimum
+for the replay. Further gains likely need new logic, not tuning.
 
 ## Next ideas, in order
 
