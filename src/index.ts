@@ -35,7 +35,7 @@ import { applyCounter, ARMS, loadParams, PARAMS } from "./params.js";
 import { pickArm, recordResult } from "./bandit.js";
 import { loadOpponents, pickCounter } from "./counters.js";
 import { initSimulator } from "./simulator.js";
-import { buildContext, doppio, MatchHistory, rackArray } from "./doppio/engine.js";
+import { buildContext, cortadomacchiato, MatchHistory, rackArray } from "./cortadomacchiato/engine.js";
 
 const HOST = process.env.STDB_HOST ?? "https://maincloud.spacetimedb.com";
 const DB_NAME = process.env.STDB_DB ?? "scrabblebot";
@@ -67,7 +67,7 @@ const WORD_RETRY_MS = 500;
 const intelByMatch = new Map<string, Intel>();
 const startedMatches = new Set<string>();
 const armByMatch = new Map<string, string>();
-// Public event history per match, for the Doppio engine.
+// Public event history per match, for the Cortadomacchiato engine.
 const historyByMatch = new Map<string, MatchHistory>();
 // SIGUSR2: exit once no match is running (run.sh restarts us on new code),
 // so restarts never cost a match.
@@ -256,21 +256,21 @@ function logFailure(what: string) {
     );
 }
 
-// Doppio's engine with the settings from strategy.json.
-function doppioEngine() {
-  return doppio({
-    bidScale: PARAMS.doppio_bid_scale,
-    coinReturn: PARAMS.doppio_coin_return,
-    denialWeight: PARAMS.doppio_denial_weight,
-    winShare: PARAMS.doppio_win_share,
-    reserveCoins: PARAMS.doppio_reserve_coins,
-    optionWeight: PARAMS.doppio_option_weight,
-    rolloutWeight: PARAMS.doppio_rollout_weight,
+// Cortadomacchiato's engine with the settings from strategy.json.
+function cortadomacchiatoEngine() {
+  return cortadomacchiato({
+    bidScale: PARAMS.cortadomacchiato_bid_scale,
+    coinReturn: PARAMS.cortadomacchiato_coin_return,
+    denialWeight: PARAMS.cortadomacchiato_denial_weight,
+    winShare: PARAMS.cortadomacchiato_win_share,
+    reserveCoins: PARAMS.cortadomacchiato_reserve_coins,
+    optionWeight: PARAMS.cortadomacchiato_option_weight,
+    rolloutWeight: PARAMS.cortadomacchiato_rollout_weight,
   });
 }
 
-// Doppio's decision context for a match, or null when it isn't ready.
-function doppioContext(conn: DbConnection, matchId: bigint, auctionId: bigint | null, letter: string) {
+// Cortadomacchiato's decision context for a match, or null when it isn't ready.
+function cortadomacchiatoContext(conn: DbConnection, matchId: bigint, auctionId: bigint | null, letter: string) {
   if (myBotId === null) return null;
   const m = conn.db.matchState.id.find(matchId);
   const me = participantForMatch(conn, matchId);
@@ -308,17 +308,17 @@ function tryBid(
   const participant = participantForMatch(conn, matchId);
   if (!participant) return;
   intelFor(conn, matchId); // also seeds the match history
-  if (PARAMS.engine_doppio) {
-    const ctx = doppioContext(conn, matchId, auctionId, letter);
+  if (PARAMS.engine_cortadomacchiato) {
+    const ctx = cortadomacchiatoContext(conn, matchId, auctionId, letter);
     if (ctx) {
-      const amount = doppioEngine().decideBid(ctx);
+      const amount = cortadomacchiatoEngine().decideBid(ctx);
       bidsByAuction.add(key);
       historyByMatch.get(String(matchId))?.myBids.set(String(auctionId), amount);
       if (amount <= 0) return;
       conn.reducers
         .submitBid({ auctionId, amount: BigInt(amount) })
         .catch(logFailure(`bid on auction ${auctionId}`));
-      console.log(`[${BOT_NAME}] bid ${amount} on '${letter}' (match ${matchId}, auction ${auctionId}, doppio)`);
+      console.log(`[${BOT_NAME}] bid ${amount} on '${letter}' (match ${matchId}, auction ${auctionId}, cortadomacchiato)`);
       return;
     }
   }
@@ -359,11 +359,11 @@ function tryPlayWord(conn: DbConnection) {
     if (now - (lastWordAttemptByMatch.get(key) ?? 0) < WORD_RETRY_MS) continue;
     lastWordAttemptByMatch.set(key, now);
     let word: string | null;
-    if (PARAMS.engine_doppio && historyByMatch.has(key)) {
+    if (PARAMS.engine_cortadomacchiato && historyByMatch.has(key)) {
       const m = conn.db.matchState.id.find(matchId);
       const a = m?.currentAuctionId !== undefined ? conn.db.auction.id.find(m.currentAuctionId) : undefined;
-      const ctx = doppioContext(conn, matchId, a?.id ?? null, a?.letter ?? "");
-      word = ctx ? doppioEngine().chooseWord(ctx) : null;
+      const ctx = cortadomacchiatoContext(conn, matchId, a?.id ?? null, a?.letter ?? "");
+      word = ctx ? cortadomacchiatoEngine().chooseWord(ctx) : null;
       if (word) logger.logPlay(matchId, { word, score: 0 });
     } else word = chooseWord({
       myRack: rackForMatch(conn, matchId),
@@ -560,7 +560,7 @@ function main() {
   enableLogging();
   const t0 = performance.now();
   initSimulator(DICTIONARY);
-  doppioEngine(); // index the wordlist now, not on the first bid
+  cortadomacchiatoEngine(); // index the wordlist now, not on the first bid
   console.log(
     `[${BOT_NAME}] simulator ready in ${Math.round(performance.now() - t0)} ms`,
   );

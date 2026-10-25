@@ -55,28 +55,28 @@
   "bandit_arms": {
     "base": {},
     "cortado_v1": {
-      "engine_doppio": false
+      "engine_cortadomacchiato": false
     },
     "cortado_replay": {
-      "engine_doppio": false,
+      "engine_cortadomacchiato": false,
       "bid_aggression": 1.65,
       "denial_fraction": 1.198,
       "market_floor": 0.72
     },
-    "doppio_bs1.5": {
-      "doppio_bid_scale": 1.5
+    "cortadomacchiato_bs1.5": {
+      "cortadomacchiato_bid_scale": 1.5
     },
-    "doppio_coin0.55": {
-      "doppio_coin_return": 0.55
+    "cortadomacchiato_coin0.55": {
+      "cortadomacchiato_coin_return": 0.55
     }
   },
   "market_floor": 0.8,
-  "engine_doppio": true,
-  "doppio_bid_scale": 1.25,
-  "doppio_coin_return": 0.7,
-  "doppio_denial_weight": 0.2,
-  "doppio_win_share": 0.6,
-  "doppio_reserve_coins": 8,
-  "doppio_option_weight": 0.9,
-  "doppio_rollout_weight": 0.9
+  "engine_cortadomacchiato": true,
+  "cortadomacchiato_bid_scale": 1.25,
+  "cortadomacchiato_coin_return": 0.7,
+  "cortadomacchiato_denial_weight": 0.2,
+  "cortadomacchiato_win_share": 0.6,
+  "cortadomacchiato_reserve_coins": 8,
+  "cortadomacchiato_option_weight": 0.9,
+  "cortadomacchiato_rollout_weight": 0.9
 }

@@ -11,9 +11,9 @@ Top 5 is ~2136+ rating, averaging ~2.2nd place / ~93 points per match.
 
 ## Engine (changed 2026-10-24 ~17:40)
 
-The base now runs the teammate's Doppio engine (`src/doppio/`, from
-mm-nair/ScrabbleBot; Doppio was top-5 live at ~2116), switched on by
-`engine_doppio` and tuned through `doppio_*` keys in strategy.json.
+The base now runs the teammate's Cortadomacchiato engine (`src/cortadomacchiato/`, from
+mm-nair/ScrabbleBot; Cortadomacchiato was top-5 live at ~2116), switched on by
+`engine_cortadomacchiato` and tuned through `cortadomacchiato_*` keys in strategy.json.
 Cortado's own strategy stays live as the `cortado_v1` / `cortado_replay`
 variants, so live placement can reverse the switch. The replay judge
 (`scripts/tune.ts`) and the arena still run cortado's engine only.

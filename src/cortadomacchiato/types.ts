@@ -1,4 +1,4 @@
-// Adapted from mm-nair/ScrabbleBot (teammate's bot "Doppio"), src/types.ts.
+// Adapted from mm-nair/ScrabbleBot (teammate's bot "Cortadomacchiato"), src/types.ts.
 // Upstream pieces are MIT-licensed (Clockwork Labs); see that repo.
 
 export type Rack = readonly number[];

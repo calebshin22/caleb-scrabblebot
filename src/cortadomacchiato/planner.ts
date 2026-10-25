@@ -1,4 +1,4 @@
-// Adapted from mm-nair/ScrabbleBot (teammate's bot "Doppio"), src/planner.ts.
+// Adapted from mm-nair/ScrabbleBot (teammate's bot "Cortadomacchiato"), src/planner.ts.
 // Upstream pieces are MIT-licensed (Clockwork Labs); see that repo.
 
 import { LETTER_VALUES, subtractWord, type WordDictionary, type WordEntry } from "./dictionary.js";

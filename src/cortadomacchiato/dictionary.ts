@@ -1,4 +1,4 @@
-// Adapted from mm-nair/ScrabbleBot (teammate's bot "Doppio"), src/dictionary.ts.
+// Adapted from mm-nair/ScrabbleBot (teammate's bot "Cortadomacchiato"), src/dictionary.ts.
 // Upstream pieces are MIT-licensed (Clockwork Labs); see that repo.
 
 import { readFileSync } from "node:fs";

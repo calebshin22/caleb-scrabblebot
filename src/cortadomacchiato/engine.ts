@@ -1,4 +1,4 @@
-// Runs Doppio's AdaptiveStrategy (see ./strategy.ts) on cortado's live state.
+// Runs Cortadomacchiato's AdaptiveStrategy (see ./strategy.ts) on cortado's live state.
 // Keeps a per-match history of public events, so building a decision context
 // never rescans the whole database.
 
@@ -9,7 +9,7 @@ import type { DecisionContext, ParticipantObservation } from "./types.js";
 // One engine per distinct settings, so strategy.json variants can tune them.
 const engines = new Map<string, AdaptiveStrategy>();
 
-export function doppio(options: Partial<StrategyOptions> = {}): AdaptiveStrategy {
+export function cortadomacchiato(options: Partial<StrategyOptions> = {}): AdaptiveStrategy {
   const key = JSON.stringify(options);
   let e = engines.get(key);
   if (!e) {

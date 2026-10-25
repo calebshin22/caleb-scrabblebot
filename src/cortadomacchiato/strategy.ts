@@ -1,4 +1,4 @@
-// Adapted from mm-nair/ScrabbleBot (teammate's bot "Doppio"), src/strategy.ts.
+// Adapted from mm-nair/ScrabbleBot (teammate's bot "Cortadomacchiato"), src/strategy.ts.
 // Upstream pieces are MIT-licensed (Clockwork Labs); see that repo.
 
 import {
