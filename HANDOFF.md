@@ -9,6 +9,15 @@ Reach the leaderboard top 5. Rank is by OpenSkill rating, which the server
 updates from **finishing place only** (`../spacetimedb/src/game.ts`).
 Top 5 is ~2136+ rating, averaging ~2.2nd place / ~93 points per match.
 
+## Engine (changed 2026-10-24 ~17:40)
+
+The base now runs the teammate's Doppio engine (`src/doppio/`, from
+mm-nair/ScrabbleBot; Doppio was top-5 live at ~2116), switched on by
+`engine_doppio` and tuned through `doppio_*` keys in strategy.json.
+Cortado's own strategy stays live as the `cortado_v1` / `cortado_replay`
+variants, so live placement can reverse the switch. The replay judge
+(`scripts/tune.ts`) and the arena still run cortado's engine only.
+
 ## Where cortado (bot id 109) is
 
 - Rank #75 of 101, rating 1468 ±85 (was #84 / 1111 at first rank, 14:57).
@@ -29,7 +38,10 @@ Top 5 is ~2136+ rating, averaging ~2.2nd place / ~93 points per match.
   (it starts `run.sh` itself). Keep the Mac awake: `caffeinate -i &`.
 - Bash reads scripts as it runs: after editing `autopilot.sh`, kill it
   (`pkill -9 -f autopilot.sh; rmdir data/.autopilot.lock`) and restart.
-  After editing `src/`, `pkill -f src/index.ts` (run.sh restarts the bot).
+  After editing `src/`, restart the bot **between matches** with
+  `pkill -USR2 -f src/index.ts`: it finishes its current match, exits, and
+  run.sh restarts it on the new code. A plain kill mid-match costs that
+  whole match (the bot spends its first minutes catching up on history).
   `strategy.json` changes apply at the next match start, no restart.
 
 ## How strategy changes get judged (most to least trusted)
