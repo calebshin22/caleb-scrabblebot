@@ -59,3 +59,4 @@ scores ~15% below the real one (see DISCOVERY.md).
 | 51 | 2026-11-08 | replay search on the last 60 real matches | `replay_best` = {'denial_rack_size': 3, 'denial_fraction': 0.99} | replay avg place 4.87 -> 3.87 | IMPROVED (replay) | live variant refreshed |
 | 52 | 2026-11-08 | replay search on the last 60 real matches | `replay_best` = {'denial_rack_size': 3, 'denial_fraction': 0.99} | replay avg place 4.87 -> 3.87 | IMPROVED (replay) | live variant refreshed |
 | 53 | 2026-11-09 | replay search on the last 60 real matches | `replay_best` = {'denial_rack_size': 4, 'denial_fraction': 0.99, 'market_floor': 0.88} | replay avg place 4.88 -> 3.95 | IMPROVED (replay) | live variant refreshed |
+| 54 | 2026-11-09 | replay search on the last 60 real matches | `replay_best` = {'denial_rack_size': 4, 'denial_fraction': 0.99, 'market_floor': 0.88} | replay avg place 4.88 -> 3.95 | IMPROVED (replay) | live variant refreshed |
